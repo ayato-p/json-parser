@@ -1,5 +1,5 @@
-(ns org.panchromatic.json-parser.core-test
-  (:require [org.panchromatic.json-parser.core :as json]
+(ns org.panchromatic.json-parser.default-test
+  (:require [org.panchromatic.json-parser.default :as json]
             [clojure.test :as t]))
 
 (t/deftest parse-atoms-test

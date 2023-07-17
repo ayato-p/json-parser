@@ -10,9 +10,7 @@
             [lein-changelog "0.3.2"]]
   :profiles
   {:dev
-   {:dependencies [[org.clojure/clojure "1.11.1"]]
-    :source-paths ["dev/src"]
-    :resource-paths ["dev/resources"]}}
+   {:dependencies [[org.clojure/clojure "1.11.1"]]}}
   :deploy-repositories [["releases" :clojars]]
   :aliases {"update-readme-version" ["shell" "sed" "-i" "s/\\\\[org\\.panchromatic\\\\/json-parser \"[0-9.]*\"\\\\]/[org\\.panchromatic\\\\/json-parser \"${:version}\"]/" "README.md"]}
   :release-tasks [["shell" "git" "diff" "--exit-code"]

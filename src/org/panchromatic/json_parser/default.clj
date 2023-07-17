@@ -1,4 +1,4 @@
-(ns org.panchromatic.json-parser.core
+(ns org.panchromatic.json-parser.default
   (:import [com.fasterxml.jackson.core JsonFactory JsonParser JsonToken]))
 
 (declare parse*)
