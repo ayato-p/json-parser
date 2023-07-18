@@ -5,7 +5,8 @@
 
 (t/deftest parse-array-test
   (t/testing "index access"
-    (t/are [expect json path] (= expect (json/parse json path))
+    (t/are [expect json path] (let [parser (json/make-parser path)]
+                                (= expect (parser json)))
       ;; Can not parse bellow
       ;; [] "[1, 2, 3]" [3] 
       [2] "[1, 2, 3]" [1]
@@ -14,5 +15,6 @@
       [1 3] "[1, 2, 3]" [[0 2]]))
 
   (t/testing "index access with nested array"
-    (t/are [expect json path] (= expect (json/parse json path))
+    (t/are [expect json path] (= expect (let [parser (json/make-parser path)]
+                                          (parser json)))
       [1] "[[1]]" [0 0])))
