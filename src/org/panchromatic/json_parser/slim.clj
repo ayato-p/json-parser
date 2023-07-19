@@ -6,9 +6,7 @@
     (.nextToken parser)))
 
 (defn build-parse-array [parser [p & ps]]
-  (let [p (->> (cond-> p (not (coll? p)) (-> list set))
-               sort
-               (cons 0)
+  (let [p (->> (cons 0 p)
                (partition 2 1)
                (map #(- (second %) (first %))))
         exp (->> (for [x p]
@@ -21,15 +19,24 @@
        (.nextToken ~parser)
        ~@exp)))
 
-(defmacro make-parser [[p & ps :as path]]
+(defn normalize-path [path]
+  (loop [[p & ps] path
+         path' []]
+    (cond
+      (nil? p) path'
+      (int? p) (recur ps (conj path' [p]))
+      (every? int? p) (recur ps (conj path' (sort p))))))
+
+(defmacro make-parser [path]
   (let [factory (vary-meta 'factory assoc :tag `JsonFactory)
-        parser (vary-meta 'parser assoc :tag `JsonParser)]
+        parser (vary-meta 'parser assoc :tag `JsonParser)
+        path' (normalize-path path)]
     `(fn ~'generated-parser [src#]
        (let [~'result (atom [])
              ~factory (JsonFactory.)
              ~parser (.createJsonParser ~factory src#)]
          (.nextToken ~parser)
-         ~(build-parse-array parser path)
+         ~(build-parse-array parser path')
          @~'result))))
 
 (comment

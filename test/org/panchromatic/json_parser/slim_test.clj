@@ -2,6 +2,11 @@
   (:require [clojure.test :as t]
             [org.panchromatic.json-parser.slim :as json]))
 
+(t/deftest normalize-path-test
+  (t/are [expect path] (= expect (json/normalize-path path))
+    [] []
+    [[1]] [1]
+    [[1 3 5]] [[3 5 1]]))
 
 (t/deftest parse-array-test
   (t/testing "index access"
@@ -12,7 +17,8 @@
       [2] "[1, 2, 3]" [1]
       [2] "[1, 2, 3]" [[1]]
       [1 2] "[1, 2, 3]" [[0 1]]
-      [1 3] "[1, 2, 3]" [[0 2]]))
+      [1 3] "[1, 2, 3]" [[0 2]]
+      [1 3] "[1, 2, 3]" [[2 0]]))
 
   (t/testing "index access with nested array"
     (t/are [expect json path] (= expect (let [parser (json/make-parser path)]
