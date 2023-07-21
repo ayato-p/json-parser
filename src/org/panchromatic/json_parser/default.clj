@@ -21,7 +21,7 @@
       (let [ary (conj ary (parse* parser))]
         (recur (.nextToken parser) ary)))))
 
-(defn- parse* [^JsonParser parser]
+(defn parse* [^JsonParser parser]
   (condp = (.getCurrentToken parser)
     JsonToken/START_ARRAY (parse-array parser)
     JsonToken/START_OBJECT (parse-object parser)

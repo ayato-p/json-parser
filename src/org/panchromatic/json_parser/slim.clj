@@ -1,23 +1,31 @@
 (ns org.panchromatic.json-parser.slim
+  (:require [org.panchromatic.json-parser.default :as default])
   (:import [com.fasterxml.jackson.core JsonFactory JsonParser JsonToken]))
 
-(defn skip-tokens [parser n]
+(defn skip-tokens [^JsonParser parser n]
   (dotimes [_ n]
     (.nextToken parser)))
 
-(defn build-parse-array [parser [p & ps]]
+(defn skip-until-end-array [^JsonParser parser]
+  (while (let [t (.nextToken parser)]
+           (and t (not= JsonToken/END_ARRAY t)))))
+
+(defn build-array-parser [parser [p & [np :as ps]]]
   (let [p (->> (cons 0 p)
                (partition 2 1)
                (map #(- (second %) (first %))))
-        exp (->> (for [x p]
-                   `((skip-tokens ~parser ~x)
-                     ~(if (seq ps)
-                        (build-parse-array parser ps)
-                        `(swap! ~'result conj (.getIntValue ~parser)))))
-                 (apply concat))]
+        exp (cond
+              (sequential? np)
+              (interleave (map (fn [x] `(skip-tokens ~parser ~x)) p)
+                          (repeat (build-array-parser parser ps)))
+              :else
+              (->> (interleave (map (fn [x] `(skip-tokens ~parser ~x)) p)
+                               (repeat `(swap! ~'result conj (default/parse* ~parser))))
+                   (cons `(.nextToken ~parser))))]
     `(do
-       (.nextToken ~parser)
-       ~@exp)))
+       (.nextToken ~parser) ;; START_ARRAY
+       ~@exp
+       (skip-until-end-array ~parser))))
 
 (defn normalize-path [path]
   (loop [[p & ps] path
@@ -25,7 +33,7 @@
     (cond
       (nil? p) path'
       (int? p) (recur ps (conj path' [p]))
-      (every? int? p) (recur ps (conj path' (sort p))))))
+      (every? int? p) (recur ps (conj path' (-> p sort vec))))))
 
 (defmacro make-parser [path]
   (let [factory (vary-meta 'factory assoc :tag `JsonFactory)
@@ -35,14 +43,13 @@
        (let [~'result (atom [])
              ~factory (JsonFactory.)
              ~parser (.createJsonParser ~factory src#)]
-         (.nextToken ~parser)
-         ~(build-parse-array parser path')
+         ~(build-array-parser parser path')
          @~'result))))
 
 (comment
   ((make-parser [[0 1]]) "[1, 2, 3]")
-  ((make-parser [1 0]) "[1, [0], 3]")
-  (macroexpand '(make-parser [1 0]))
+  ((make-parser [[1 2]]) "[[1], [0], [3]]")
 
+  (clojure.walk/macroexpand-all '(make-parser [[0 1] 0]))
   ;;
   )
