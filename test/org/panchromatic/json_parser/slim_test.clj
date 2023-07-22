@@ -60,6 +60,14 @@
     [42 43] "{\"a\": {\"x\": 42}, \"b\": {\"x\": 43}}" [#{:a :b} :x]
     [{"ans" 42}] "{\"a\": {\"x\": 0}, \"b\": {\"ans\": 42}, \"c\": {\"x\": 0}}" [:b]))
 
+(t/deftest parse-complex-json-test
+  (t/are [expect json path] (= expect (let [parser (json/make-parser path)]
+                                        (parser json)))
+    [42] "[0, {\"a\": [0, 42]}]" [1 :a 1]
+    [42] "[[], {\"a\": [0, 42]}]" [1 :a 1]
+    ;; [42] "[{}, {\"a\": [0, 42]}]" [1 :a 1]
+    ))
+
 (comment
   (let [p (json/make-parser [1 0])]
     (p "[[1], [2]]"))

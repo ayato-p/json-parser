@@ -20,12 +20,14 @@
       (= JsonToken/START_OBJECT t) (.skipChildren parser)
       :else nil)))
 
-(defn build-object-parser [parser [p & [np :as ps]]]
-  (let [exp (cond
-              (set? np)
-              (build-object-parser parser ps)
-              :else
-              `(swap! ~'result conj (default/parse* ~parser)))]
+(defn skip-until-end-array [^JsonParser parser]
+  (while (let [t (next-token parser)]
+           (and t (not= JsonToken/END_ARRAY t)))))
+
+(declare build-parser)
+
+(defn build-object-parser [parser [p & ps]]
+  (let [exp (build-parser parser ps)]
     `(loop [t# (next-token ~parser)]
        (when-not (= JsonToken/END_OBJECT t#)
          (if (~p (.getText ~parser))
@@ -34,25 +36,25 @@
            (skip-field ~parser))
          (recur (next-token ~parser))))))
 
-(defn skip-until-end-array [^JsonParser parser]
-  (while (let [t (next-token parser)]
-           (and t (not= JsonToken/END_ARRAY t)))))
-
-(defn build-array-parser [parser [p & [np :as ps]]]
+(defn build-array-parser [parser [p & ps]]
   (let [p (->> (cons 0 p)
                (partition 2 1)
                (map #(- (second %) (first %))))
-        exp (cond
-              (sequential? np)
-              (interleave (map (fn [x] `(skip-elements ~parser ~x)) p)
-                          (repeat (build-array-parser parser ps)))
-              :else
-              (interleave (map (fn [x] `(skip-elements ~parser ~x)) p)
-                          (repeat `(swap! ~'result conj (default/parse* ~parser)))))]
+        exp (interleave (map (fn [x] `(skip-elements ~parser ~x)) p)
+                        (repeat (build-parser parser ps)))]
     `(do
        (next-token ~parser)
        ~@exp
        (skip-until-end-array ~parser))))
+
+(defn build-parser [^JsonParser parser [p :as path]]
+  (cond
+    (sequential? p)
+    (build-array-parser parser path)
+    (set? p)
+    (build-object-parser parser path)
+    :else
+    `(swap! ~'result conj (default/parse* ~parser))))
 
 (defn normalize-path [path]
   (loop [[p & ps] path
@@ -73,15 +75,13 @@
 (defmacro make-parser [path]
   (let [factory (vary-meta 'factory assoc :tag `JsonFactory)
         parser (vary-meta 'parser assoc :tag `JsonParser)
-        [p :as path'] (normalize-path path)]
+        path' (normalize-path path)]
     `(fn ~'generated-parser [src#]
        (let [~'result (atom [])
              ~factory (JsonFactory.)
              ~parser (.createJsonParser ~factory src#)]
          (next-token ~parser)
-         ~(cond
-            (sequential? p) (build-array-parser parser path')
-            (set? p) (build-object-parser parser path'))
+         ~(build-parser parser path')
          @~'result))))
 
 (comment
