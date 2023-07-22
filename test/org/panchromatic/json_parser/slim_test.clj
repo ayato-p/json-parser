@@ -65,16 +65,4 @@
                                         (parser json)))
     [42] "[0, {\"a\": [0, 42]}]" [1 :a 1]
     [42] "[[], {\"a\": [0, 42]}]" [1 :a 1]
-    ;; [42] "[{}, {\"a\": [0, 42]}]" [1 :a 1]
-    ))
-
-(comment
-  (let [p (json/make-parser [1 0])]
-    (p "[[1], [2]]"))
-  (org.panchromatic.json-parser.default/parse "{\"a\": {\"x\": 0}, \"b\": 1, \"c\": {\"x\": 0}}")
-  ((json/make-parser ["b"])
-   "{\"a\": {\"x\": 0}, \"b\": 1, \"c\": {\"x\": 0}}")
-
-  (macroexpand '(json/make-parser ["a" "b"]))
-         ;;
-  )
+    [42] "[{}, {\"a\": [0, 42]}]" [1 :a 1]))

@@ -10,15 +10,16 @@
   (loop [^JsonToken t (.getCurrentToken parser)
          i 0]
     (when (< i n)
-      (when (= JsonToken/START_ARRAY t)
+      (when (or (= JsonToken/START_ARRAY t)
+                (= JsonToken/START_OBJECT t))
         (.skipChildren parser))
       (recur (next-token parser) (inc i)))))
 
 (defn skip-field [^JsonParser parser]
   (let [t (next-token parser)]
-    (cond
-      (= JsonToken/START_OBJECT t) (.skipChildren parser)
-      :else nil)))
+    (when (or (= JsonToken/START_OBJECT t)
+              (= JsonToken/START_ARRAY t))
+      (.skipChildren parser))))
 
 (defn skip-until-end-array [^JsonParser parser]
   (while (let [t (next-token parser)]
@@ -56,21 +57,18 @@
     :else
     `(swap! ~'result conj (default/parse* ~parser))))
 
-(defn normalize-path [path]
-  (loop [[p & ps] path
-         path' []]
-    (cond
-      (nil? p)
-      #_> path'
-      (int? p)
-      #_> (recur ps (conj path' [p]))
-      (or (keyword? p)
-          (string? p))
-      #_> (recur ps (conj path' #{(name p)}))
-      (every? int? p)
-      #_> (recur ps (conj path' (-> p sort vec)))
-      (every? (some-fn keyword? string?) p)
-      #_> (recur ps (conj path' (->> p (map name) set))))))
+(let [normalize (fn [p]
+                  (cond
+                    (int? p) [p]
+                    ((some-fn keyword? string?) p) #{(name p)}
+                    (every? int? p) (-> p sort vec)
+                    (every? (some-fn keyword? string?) p) (->> p (map name) set)))]
+  (defn normalize-path [path]
+    (loop [[p & ps] path
+           path' []]
+      (if (nil? p)
+        path'
+        (recur ps (conj path' (normalize p)))))))
 
 (defmacro make-parser [path]
   (let [factory (vary-meta 'factory assoc :tag `JsonFactory)
