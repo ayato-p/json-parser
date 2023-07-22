@@ -2,12 +2,20 @@
   (:require [org.panchromatic.json-parser.default :as default])
   (:import [com.fasterxml.jackson.core JsonFactory JsonParser JsonToken]))
 
+(defn next-token [^JsonParser parser]
+  (prn (.getCurrentToken parser))
+  (.nextToken parser))
+
 (defn skip-tokens [^JsonParser parser n]
-  (dotimes [_ n]
-    (.nextToken parser)))
+  (loop [^JsonToken t (.getCurrentToken parser)
+         i 0]
+    (when (< i n)
+      (when (= JsonToken/START_ARRAY t)
+        (.skipChildren parser))
+      (recur (next-token parser) (inc i)))))
 
 (defn skip-until-end-array [^JsonParser parser]
-  (while (let [t (.nextToken parser)]
+  (while (let [t (next-token parser)]
            (and t (not= JsonToken/END_ARRAY t)))))
 
 (defn build-array-parser [parser [p & [np :as ps]]]
@@ -21,9 +29,9 @@
               :else
               (->> (interleave (map (fn [x] `(skip-tokens ~parser ~x)) p)
                                (repeat `(swap! ~'result conj (default/parse* ~parser))))
-                   (cons `(.nextToken ~parser))))]
+                   (cons `(next-token ~parser))))]
     `(do
-       (.nextToken ~parser) ;; START_ARRAY
+       (next-token ~parser) ;; START_ARRAY
        ~@exp
        (skip-until-end-array ~parser))))
 
