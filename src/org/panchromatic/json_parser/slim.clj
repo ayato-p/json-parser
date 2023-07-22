@@ -38,9 +38,17 @@
   (loop [[p & ps] path
          path' []]
     (cond
-      (nil? p) path'
-      (int? p) (recur ps (conj path' [p]))
-      (every? int? p) (recur ps (conj path' (-> p sort vec))))))
+      (nil? p)
+      #_> path'
+      (int? p)
+      #_> (recur ps (conj path' [p]))
+      (or (keyword? p)
+          (string? p))
+      #_> (recur ps (conj path' #{(name p)}))
+      (every? int? p)
+      #_> (recur ps (conj path' (-> p sort vec)))
+      (every? (some-fn keyword? string?) p)
+      #_> (recur ps (conj path' (->> p (map name) set))))))
 
 (defmacro make-parser [path]
   (let [factory (vary-meta 'factory assoc :tag `JsonFactory)

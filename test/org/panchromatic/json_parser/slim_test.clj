@@ -5,8 +5,19 @@
 (t/deftest normalize-path-test
   (t/are [expect path] (= expect (json/normalize-path path))
     [] []
+    ;; for arrays
     [[1]] [1]
-    [[1 3 5]] [[3 5 1]]))
+    [[1 3 5]] [[3 5 1]]
+    [[3] [5] [1]] [3 5 1]
+
+    ;; for objects
+    [#{"foo"}] [:foo]
+    [#{"foo"}] ["foo"]
+    [#{"foo" "bar"}] [[:foo "bar"]]
+    [#{"foo"} #{"bar"}] [#{:foo} #{"bar"}]
+
+    ;; combination
+    [[1] #{"foo"} #{"bar" "baz"} [1 3]] [1 :foo [:bar :baz] [3 1]]))
 
 (t/deftest parse-array-test
   (t/are [expect json path] (let [parser (json/make-parser path)]
