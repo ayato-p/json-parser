@@ -6,7 +6,7 @@
   ;; (prn (.getCurrentToken parser))
   (.nextToken parser))
 
-(defn skip-tokens [^JsonParser parser n]
+(defn skip-elements [^JsonParser parser n]
   (loop [^JsonToken t (.getCurrentToken parser)
          i 0]
     (when (< i n)
@@ -24,10 +24,10 @@
                (map #(- (second %) (first %))))
         exp (cond
               (sequential? np)
-              (interleave (map (fn [x] `(skip-tokens ~parser ~x)) p)
+              (interleave (map (fn [x] `(skip-elements ~parser ~x)) p)
                           (repeat (build-array-parser parser ps)))
               :else
-              (interleave (map (fn [x] `(skip-tokens ~parser ~x)) p)
+              (interleave (map (fn [x] `(skip-elements ~parser ~x)) p)
                           (repeat `(swap! ~'result conj (default/parse* ~parser)))))]
     `(do
        (next-token ~parser)
