@@ -3,7 +3,7 @@
   (:import [com.fasterxml.jackson.core JsonFactory JsonParser JsonToken]))
 
 (defn next-token [^JsonParser parser]
-  (prn (.getCurrentToken parser))
+  ;; (prn (.getCurrentToken parser))
   (.nextToken parser))
 
 (defn skip-tokens [^JsonParser parser n]
@@ -27,11 +27,10 @@
               (interleave (map (fn [x] `(skip-tokens ~parser ~x)) p)
                           (repeat (build-array-parser parser ps)))
               :else
-              (->> (interleave (map (fn [x] `(skip-tokens ~parser ~x)) p)
-                               (repeat `(swap! ~'result conj (default/parse* ~parser))))
-                   (cons `(next-token ~parser))))]
+              (interleave (map (fn [x] `(skip-tokens ~parser ~x)) p)
+                          (repeat `(swap! ~'result conj (default/parse* ~parser)))))]
     `(do
-       (next-token ~parser) ;; START_ARRAY
+       (next-token ~parser)
        ~@exp
        (skip-until-end-array ~parser))))
 
@@ -51,6 +50,7 @@
        (let [~'result (atom [])
              ~factory (JsonFactory.)
              ~parser (.createJsonParser ~factory src#)]
+         (next-token ~parser)
          ~(build-array-parser parser path')
          @~'result))))
 
