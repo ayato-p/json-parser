@@ -41,10 +41,32 @@
     [1 2 5 6] "[[1, 2], [3, 4], [5, 6]]" [[0 2] [0 1]]
     [[1 2] [5 6]] "[[1, 2], [3, 4], [5, 6]]" [[0 2]]))
 
+(t/deftest parse-object-test
+  (t/are [expect json path] (= expect (let [parser (json/make-parser path)]
+                                        (parser json)))
+    [] "{\"bar\": 42}" [:foo]
+    [42] "{\"foo\": 42}" [:foo]
+    [1] "{\"a\": 1, \"b\": 2}" [#{"a"}]
+    [1 2] "{\"a\": 1, \"b\": 2}" [#{"a" "b"}]
+    [{"b" 1}] "{\"a\": {\"b\": 1}}" [#{:a}]))
+
+(t/deftest parse-nested-object-test
+  (t/are [expect json path] (= expect (let [parser (json/make-parser path)]
+                                        (parser json)))
+    [42] "{\"a\": {\"b\": 42}}" [#{:a} #{:b}]
+    [42 108] "{\"a\": {\"b\": 42, \"c\": 108}}" [#{:a} #{:b :c}]
+    [[42]] "{\"a\": {\"b\": {\"c\": [42]}}}" [:a :b :c]
+    [42 43] "{\"a\": {\"x\": 42}, \"b\": {\"x\": 43}}" [#{:a :b} :x]
+    [42 43] "{\"a\": {\"x\": 42}, \"b\": {\"x\": 43}}" [#{:a :b} :x]
+    [{"ans" 42}] "{\"a\": {\"x\": 0}, \"b\": {\"ans\": 42}, \"c\": {\"x\": 0}}" [:b]))
+
 (comment
   (let [p (json/make-parser [1 0])]
     (p "[[1], [2]]"))
+  (org.panchromatic.json-parser.default/parse "{\"a\": {\"x\": 0}, \"b\": 1, \"c\": {\"x\": 0}}")
+  ((json/make-parser ["b"])
+   "{\"a\": {\"x\": 0}, \"b\": 1, \"c\": {\"x\": 0}}")
 
-  (clojure.walk/macroexpand-all '(json/make-parser [1]))
+  (macroexpand '(json/make-parser ["a" "b"]))
          ;;
   )

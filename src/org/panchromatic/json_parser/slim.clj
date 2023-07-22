@@ -3,7 +3,7 @@
   (:import [com.fasterxml.jackson.core JsonFactory JsonParser JsonToken]))
 
 (defn next-token [^JsonParser parser]
-  ;; (prn (.getCurrentToken parser))
+  ;; (prn (.getCurrentToken parser) (.getText parser))
   (.nextToken parser))
 
 (defn skip-elements [^JsonParser parser n]
@@ -13,6 +13,26 @@
       (when (= JsonToken/START_ARRAY t)
         (.skipChildren parser))
       (recur (next-token parser) (inc i)))))
+
+(defn skip-field [^JsonParser parser]
+  (let [t (next-token parser)]
+    (cond
+      (= JsonToken/START_OBJECT t) (.skipChildren parser)
+      :else nil)))
+
+(defn build-object-parser [parser [p & [np :as ps]]]
+  (let [exp (cond
+              (set? np)
+              (build-object-parser parser ps)
+              :else
+              `(swap! ~'result conj (default/parse* ~parser)))]
+    `(loop [t# (next-token ~parser)]
+       (when-not (= JsonToken/END_OBJECT t#)
+         (if (~p (.getText ~parser))
+           (do (next-token ~parser)
+               ~exp)
+           (skip-field ~parser))
+         (recur (next-token ~parser))))))
 
 (defn skip-until-end-array [^JsonParser parser]
   (while (let [t (next-token parser)]
@@ -53,13 +73,15 @@
 (defmacro make-parser [path]
   (let [factory (vary-meta 'factory assoc :tag `JsonFactory)
         parser (vary-meta 'parser assoc :tag `JsonParser)
-        path' (normalize-path path)]
+        [p :as path'] (normalize-path path)]
     `(fn ~'generated-parser [src#]
        (let [~'result (atom [])
              ~factory (JsonFactory.)
              ~parser (.createJsonParser ~factory src#)]
          (next-token ~parser)
-         ~(build-array-parser parser path')
+         ~(cond
+            (sequential? p) (build-array-parser parser path')
+            (set? p) (build-object-parser parser path'))
          @~'result))))
 
 (comment
